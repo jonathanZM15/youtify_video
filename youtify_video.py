@@ -40,7 +40,7 @@ class YoutifyVideoApp(ctk.CTk):
     super().__init__()
 
     self.title("Youtify - Descargador de Videos MP4")
-    self.geometry("600x420")
+    self.geometry("600x480")
     self.resizable(False, False)
 
     # Detecta si es un .exe compilado o un script para portabilidad total
@@ -57,7 +57,7 @@ class YoutifyVideoApp(ctk.CTk):
     self.titulo_label = ctk.CTkLabel(
         self, text="Youtify - Descargador de Videos MP4", font=("Arial", 20, "bold")
     )
-    self.titulo_label.pack(pady=20)
+    self.titulo_label.pack(pady=15)
 
     self.url_label = ctk.CTkLabel(
         self, text="Pega el enlace del Video o Playlist:", font=("Arial", 12)
@@ -72,6 +72,29 @@ class YoutifyVideoApp(ctk.CTk):
     )
     self.url_entry.pack(pady=5)
 
+    # --- SECCIÓN DE CALIDAD ---
+    self.calidad_frame = ctk.CTkFrame(self, fg_color="transparent")
+    self.calidad_frame.pack(pady=5, padx=40, fill="x")
+
+    self.calidad_label = ctk.CTkLabel(
+        self.calidad_frame, text="Selecciona la Calidad:", font=("Arial", 12)
+    )
+    self.calidad_label.pack(side="left", padx=(0, 10))
+
+    # Opciones inteligentes de calidad
+    opciones_calidad = [
+        "Máxima (Mejor calidad posible)",
+        "1080p (Full HD)",
+        "720p (HD)",
+        "480p (SD)",
+        "360p"
+    ]
+    self.quality_menu = ctk.CTkComboBox(
+        self.calidad_frame, values=opciones_calidad, width=320, state="readonly"
+    )
+    self.quality_menu.set("Máxima (Mejor calidad posible)")
+    self.quality_menu.pack(side="right")
+
     self.carpeta_label = ctk.CTkLabel(
         self,
         text=f"Tus videos se guardarán en:\n{self.ruta_destino}",
@@ -79,7 +102,7 @@ class YoutifyVideoApp(ctk.CTk):
         text_color="gray",
         justify="center"
     )
-    self.carpeta_label.pack(pady=15)
+    self.carpeta_label.pack(pady=10)
 
     self.btn_descargar = ctk.CTkButton(
         self,
@@ -91,9 +114,9 @@ class YoutifyVideoApp(ctk.CTk):
         height=40,
         command=self.iniciar_hilo_descarga,
     )
-    self.btn_descargar.pack(pady=10)
+    self.btn_descargar.pack(pady=5)
 
-    self.estado_textbox = ctk.CTkTextbox(self, width=520, height=120)
+    self.estado_textbox = ctk.CTkTextbox(self, width=520, height=110)
     self.estado_textbox.pack(pady=10)
     self.estado_textbox.insert("0.1", "Listo para descargar videos...\n")
     self.estado_textbox.configure(state="disabled")
@@ -120,9 +143,23 @@ class YoutifyVideoApp(ctk.CTk):
     
     os.makedirs(self.ruta_destino, exist_ok=True)
 
-    # Configuración de yt-dlp para unir video HD y audio en MP4
+    # Obtener la calidad seleccionada del menú desplegable
+    seleccion = self.quality_menu.get()
+    
+    # Lógica inteligente para evitar que se rompa la playlist
+    if "1080" in seleccion:
+        format_str = "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+    elif "720" in seleccion:
+        format_str = "bestvideo[height<=720]+bestaudio/best[height<=720]"
+    elif "480" in seleccion:
+        format_str = "bestvideo[height<=480]+bestaudio/best[height<=480]"
+    elif "360" in seleccion:
+        format_str = "bestvideo[height<=360]+bestaudio/best[height<=360]"
+    else:
+        format_str = "bestvideo+bestaudio/best"
+
     ydl_opts = {
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "format": format_str,
         "merge_output_format": "mp4",
         "outtmpl": "%(title)s.%(ext)s", 
         "progress_hooks": [self.hook_progreso],
@@ -133,6 +170,7 @@ class YoutifyVideoApp(ctk.CTk):
 
     try:
       self.log(f"\n[+] Iniciando proceso en:\n{self.ruta_destino}")
+      self.log(f"[*] Calidad objetivo: {seleccion}")
       os.chdir(self.ruta_destino)
       
       with YoutubeDL(ydl_opts) as ydl:
